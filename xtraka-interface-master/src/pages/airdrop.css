@@ -1,0 +1,131 @@
+.airdrop-page {
+  min-height: 100vh;
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+.airdrop-sidebar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-3);
+  background: #2b3034;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.airdrop-brand img {
+  width: 40px;
+  height: 40px;
+  filter: brightness(0) invert(1);
+}
+
+.airdrop-nav {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-10);
+}
+
+.airdrop-nav-btn {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  border: none;
+  background: rgba(255, 255, 255, 0.08);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: background 0.2s, box-shadow 0.2s, transform 0.2s;
+  text-decoration: none;
+}
+
+.airdrop-nav-btn img {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  filter: brightness(0) invert(1);
+}
+
+.airdrop-nav-active {
+  background: rgba(59, 130, 246, 0.35);
+}
+
+.airdrop-nav-btn:hover {
+  background: rgba(59, 130, 246, 0.3);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
+    0 0 12px rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+
+.airdrop-sidebar-footer {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.airdrop-sidebar-footer img {
+  width: 28px;
+  height: 28px;
+  filter: brightness(0) invert(1);
+}
+
+.airdrop-sidebar-footer span {
+  font-size: 12px;
+  color: var(--color-text-muted);
+}
+
+.airdrop-main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.airdrop-topbar {
+  height: 56px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.airdrop-content {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: var(--space-16) var(--space-6);
+}
+
+.airdrop-card {
+  max-width: 520px;
+  width: 100%;
+  padding: var(--space-10);
+  border-radius: var(--radius-2xl);
+  text-align: center;
+}
+
+.airdrop-hero {
+  width: min(380px, 80vw);
+  height: auto;
+  object-fit: contain;
+  margin: 0 auto var(--space-8);
+  display: block;
+}
+
+.airdrop-title {
+  margin: 0 0 var(--space-4);
+  font-size: var(--text-3xl);
+  font-weight: var(--font-bold);
+}
+
+.airdrop-text {
+  margin: 0;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  max-width: 360px;
+  margin-left: auto;
+  margin-right: auto;
+}
