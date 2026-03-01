@@ -3,7 +3,7 @@
 > A decentralized platform where native speakers submit African language translations (text & audio) and earn cryptocurrency rewards. AI automatically checks submission quality, creating a crowdsourced translation data pipeline that pays contributors fairly.
 
 **Live Site:** [https://xtraka.com](https://xtraka.com)
-**Repository:** [https://github.com/lasgedu/xTraka](https://github.com/lasgedu/xTraka)
+
 **Video Demo:** [https://youtu.be/YUBEwyFZSYo](https://youtu.be/YUBEwyFZSYo)
 
 ---
