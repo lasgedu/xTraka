@@ -39,9 +39,9 @@
 .submissions-stat {
     flex: 1;
     min-width: 100px;
-    background: #161b20;
+    background: var(--color-surface);
     border-radius: var(--radius-lg);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--color-border);
     padding: var(--space-4) var(--space-5);
     text-align: center;
 }
@@ -63,15 +63,15 @@
 }
 
 .stat-approved .stat-number {
-    color: #34d399;
+    color: var(--color-success);
 }
 
 .stat-pending .stat-number {
-    color: #fbbf24;
+    color: var(--color-warning);
 }
 
 .stat-rejected .stat-number {
-    color: #f87171;
+    color: var(--color-error);
 }
 
 /* ── Submission list ── */
@@ -82,23 +82,23 @@
 }
 
 .submission-card {
-    background: #161b20;
+    background: var(--color-surface);
     border-radius: var(--radius-lg);
-    border: 1px solid rgba(255, 255, 255, 0.06);
+    border: 1px solid var(--color-border);
     padding: var(--space-5);
     transition: border-color 0.2s;
 }
 
 .submission-card.status-approved {
-    border-left: 3px solid #34d399;
+    border-left: 3px solid var(--color-success);
 }
 
 .submission-card.status-pending {
-    border-left: 3px solid #fbbf24;
+    border-left: 3px solid var(--color-warning);
 }
 
 .submission-card.status-rejected {
-    border-left: 3px solid #f87171;
+    border-left: 3px solid var(--color-error);
 }
 
 .submission-card-top {

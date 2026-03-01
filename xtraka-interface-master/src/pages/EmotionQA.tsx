@@ -183,9 +183,8 @@ export function EmotionQA() {
                             <h2 className="eqa-title">Loading Tasks...</h2>
                         </div>
                     ) : (progress.limitReached || !currentTask) ? (
-                        /* Empty State / Limit Reached - Matches Requested Screenshot UI */
+                        /* Empty State / Limit Reached */
                         <div className="eqa-center" style={{
-                            background: '#0f172a', // Ensure dark background
                             minHeight: '60vh',
                             display: 'flex',
                             flexDirection: 'column',

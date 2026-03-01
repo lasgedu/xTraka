@@ -28,6 +28,7 @@ interface Submission {
         audioDuration: number
         verifiedAt: string | null
     }
+    audioPath?: string
     rejectionReason: string
     submittedAt: string
     createdAt: string
@@ -184,6 +185,12 @@ export function MySubmissions() {
 
                                                 <div className="submission-card-bottom">
                                                     <span className="submission-time">{timeAgo(sub.submittedAt || sub.createdAt)}</span>
+
+                                                    {sub.audioPath && (
+                                                        <div className="submission-audio">
+                                                            <audio controls src={`${API}/uploads/${sub.audioPath}`} className="w-full max-w-[200px] h-8" />
+                                                        </div>
+                                                    )}
 
                                                     {sub.status === 'approved' && (
                                                         <span className="submission-accuracy">

@@ -14,7 +14,7 @@ const uploadToGridFS = (file) => {
     const bucket = getGridFSBucket()
     if (!bucket) return reject(new Error('GridFS bucket not initialized'))
 
-    const filename = file.originalname || `audio-${Date.now()}`
+    const filename = `audio-${Date.now()}-${Math.round(Math.random() * 1e9)}.webm`
     const uploadStream = bucket.openUploadStream(filename, {
       contentType: file.mimetype,
     })
@@ -117,34 +117,68 @@ const submitWork = async (req, res, next) => {
       audioPath = uploadResult.filename
     }
 
-    // Quick checks only (audio quality)
+    // Verify emotion tasks (text-only)
     const { audioMeta } = await runQuickChecks({ audioBuffer: req.file?.buffer })
 
-    // Save as pending — Whisper will validate async
-    const submission = await Submission.create({
+    // Create submission record
+    const submission = new Submission({
       userHash: user.walletHashIndex,
-      taskId: task._id,
+      taskId,
       textContent: textContent || '',
-      audioPath,
-      audioFileId,
-      status: 'pending',
-      aiVerification: {
-        audioQuality: audioMeta.audioQuality,
-        audioDuration: audioMeta.audioDuration,
-        audioBitrate: audioMeta.audioBitrate,
-        audioSampleRate: audioMeta.audioSampleRate,
-        audioCorrupted: audioMeta.audioCorrupted,
-        expectedLanguage: task.language.toLowerCase(),
-      },
-      submittedAt: new Date(),
-      ipAddress: req.ip,
+      audioPath: audioPath || '',
+      audioFileId: audioFileId || undefined,
+      ipAddress: req.ip || '',
       userAgent: req.headers['user-agent'] || '',
+      submittedAt: new Date(),
     })
 
-    // Update user counters (pending)
+    // Verify emotion tasks (text-only)
+    if (task.category === 'emotion_qa') {
+      const userAnswer = (textContent || '').trim().toLowerCase()
+      // Use expectedAnswer if available, otherwise fallback to sourceText or title parsing if needed
+      // Assuming the correct emotion is stored in 'expectedAnswer' or 'sourceText'
+      const correctAnswer = (task.expectedAnswer || task.sourceText || '').trim().toLowerCase()
+
+      if (userAnswer === correctAnswer) {
+        submission.status = 'approved'
+        submission.aiVerification = {
+          ...submission.aiVerification,
+          transcriptionMatch: true,
+          overallConfidence: 100,
+          feedback: 'Correct emotion selected'
+        }
+      } else {
+        submission.status = 'rejected'
+        submission.rejectionReason = `Incorrect emotion. You selected ${textContent}, but the correct emotion was ${task.expectedAnswer || task.sourceText}`
+        submission.aiVerification = {
+          ...submission.aiVerification,
+          transcriptionMatch: false,
+          overallConfidence: 0,
+          feedback: 'Incorrect emotion selected'
+        }
+      }
+    }
+
+    // Save as pending — Whisper will validate async
+    // (If emotion_qa, status might already be approved/rejected above, so we keep that)
+    if (!submission.status) submission.status = 'pending'
+
+    await submission.save()
+
+    // Update user counters based on status
     user.totalSubmissions += 1
-    user.pendingSubmissions += 1
-    user.pendingRewards += task.rewardAmount
+
+    if (submission.status === 'pending') {
+      user.pendingSubmissions += 1
+      user.pendingRewards += task.rewardAmount
+    } else if (submission.status === 'approved') {
+      user.approvedSubmissions += 1
+      user.approvedRewards += task.rewardAmount
+      // Instant reward for correct answer
+    } else if (submission.status === 'rejected') {
+      user.rejectedSubmissions += 1
+    }
+
     user.trustScore = await calculateTrustScore(user.walletHashIndex)
     user.currentBadge = getBadgeForTrust(user.approvedSubmissions)
     user.lastSubmissionAt = new Date()
@@ -176,8 +210,12 @@ const submitWork = async (req, res, next) => {
 
     return res.status(201).json({
       submissionId: submission._id,
-      status: 'pending',
-      message: 'Submission received! AI validation in progress.',
+      status: submission.status,
+      message: submission.status === 'approved'
+        ? 'Submission approved! Reward added to your balance.'
+        : submission.status === 'rejected'
+          ? `Submission rejected: ${submission.rejectionReason || 'Incorrect answer'}`
+          : 'Submission received! AI validation in progress.',
     })
   } catch (error) {
     return next(error)

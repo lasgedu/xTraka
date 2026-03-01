@@ -87,12 +87,18 @@ const processSubmission = async (submission) => {
         const language = await detectLanguage(transcript)
         const profanity = await detectProfanity(transcript)
 
-        // 4. Determine status (threshold: 65%)
-        const newStatus = similarity >= 65 ? 'approved' : 'rejected'
-        const rejectionReason =
-            newStatus === 'rejected'
-                ? `Reading accuracy too low (${similarity}%). At least 65% match required.`
-                : ''
+        // 4. Determine status based on new 3-tier thresholds
+        let newStatus = 'rejected'
+        let rejectionReason = ''
+
+        if (similarity >= 70) {
+            newStatus = 'approved'
+        } else if (similarity >= 35) {
+            newStatus = 'pending'
+        } else {
+            newStatus = 'rejected'
+            rejectionReason = `Reading accuracy too low (${similarity}%). At least 35% match required.`
+        }
 
         // 5. Update submission
         await Submission.findByIdAndUpdate(submission._id, {
@@ -100,7 +106,7 @@ const processSubmission = async (submission) => {
                 status: newStatus,
                 rejectionReason,
                 'aiVerification.audioTranscription': transcript,
-                'aiVerification.transcriptionMatch': similarity >= 65,
+                'aiVerification.transcriptionMatch': similarity >= 35,
                 'aiVerification.overallConfidence': similarity,
                 'aiVerification.languageDetected': language.language,
                 'aiVerification.languageConfidence': language.confidence,

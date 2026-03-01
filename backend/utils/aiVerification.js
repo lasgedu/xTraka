@@ -125,7 +125,7 @@ const tokenSimilarity = (source, transcript) => {
 
       // Fuzzy match — threshold based on word length
       const sim = charSimilarity(srcWord, transTokens[i])
-      const threshold = srcWord.length <= 3 ? 0.8 : 0.5  // stricter for short words
+      const threshold = srcWord.length <= 3 ? 0.7 : 0.5  // stricter for short words
       if (sim > bestScore && sim >= threshold) {
         bestScore = sim
         bestIdx = i
@@ -331,12 +331,18 @@ const runWhisperValidation = async (submission, sourceText) => {
     // 3. Profanity check on transcript (language detection removed)
     const profanity = await detectProfanity(transcript)
 
-    // 5. Determine status (threshold: 65%)
-    const newStatus = similarity >= 65 ? 'approved' : 'rejected'
-    const rejectionReason =
-      newStatus === 'rejected'
-        ? `Reading accuracy too low (${similarity}%). At least 65% match required.`
-        : ''
+    // 5. Determine status based on new 3-tier thresholds
+    let newStatus = 'rejected'
+    let rejectionReason = ''
+
+    if (similarity >= 70) {
+      newStatus = 'approved'
+    } else if (similarity >= 35) {
+      newStatus = 'pending'
+    } else {
+      newStatus = 'rejected'
+      rejectionReason = `Reading accuracy too low (${similarity}%). At least 35% match required.`
+    }
 
     // 5. Update submission
     await Submission.findByIdAndUpdate(submission._id, {
@@ -344,7 +350,7 @@ const runWhisperValidation = async (submission, sourceText) => {
         status: newStatus,
         rejectionReason,
         'aiVerification.audioTranscription': transcript,
-        'aiVerification.transcriptionMatch': similarity >= 50,
+        'aiVerification.transcriptionMatch': similarity >= 35,
         'aiVerification.overallConfidence': similarity,
         'aiVerification.languageDetected': detectedLang || 'unknown',
         'aiVerification.languageConfidence': detectedLang ? 80 : 0,
@@ -378,6 +384,20 @@ const runWhisperValidation = async (submission, sourceText) => {
     )
   } catch (error) {
     console.error(`❌ Whisper validation failed for submission=${submission._id}:`, error.message)
+    // Mark submission with error info so it shows up in admin review
+    try {
+      const Submission = require('../models/Submission')
+      await Submission.findByIdAndUpdate(submission._id, {
+        $set: {
+          'aiVerification.verifiedAt': new Date(),
+          'aiVerification.modelVersion': 'assemblyai-v1',
+          'aiVerification.overallConfidence': 0,
+          'aiVerification.feedback': `AI validation error: ${error.message}`,
+        },
+      })
+    } catch (updateErr) {
+      console.error('Failed to update submission after validation error:', updateErr.message)
+    }
   }
 }
 

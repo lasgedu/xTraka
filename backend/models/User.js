@@ -15,6 +15,8 @@ const userSchema = new mongoose.Schema(
     currentBadge: { type: String, default: 'Beginner' },
     isActive: { type: Boolean, default: true },
     isAdmin: { type: Boolean, default: false },
+    isSubAdmin: { type: Boolean, default: false },
+    adminLanguages: [{ type: String }], // Languages the sub-admin can review
     isBanned: { type: Boolean, default: false },
     banReason: { type: String, default: '' },
     lastLoginAt: { type: Date },

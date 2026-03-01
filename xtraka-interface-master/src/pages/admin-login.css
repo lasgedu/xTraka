@@ -82,3 +82,20 @@
 .admin-login-btn:hover {
   background: var(--color-primary-hover);
 }
+
+/* ── Mobile responsiveness ── */
+@media (max-width: 480px) {
+  .admin-login-card {
+    margin: 0 var(--space-4);
+    padding: var(--space-6);
+  }
+
+  .admin-login-title {
+    font-size: var(--text-lg);
+    margin-bottom: var(--space-4);
+  }
+
+  .form-group input {
+    font-size: var(--text-sm);
+  }
+}

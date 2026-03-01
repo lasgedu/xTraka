@@ -63,6 +63,8 @@ const verify = async (req, res) => {
   const token = signToken({
     userId: user._id.toString(),
     walletHashIndex,
+    isAdmin: user.isAdmin,
+    isSubAdmin: user.isSubAdmin,
   })
 
   await logEvent({
@@ -80,6 +82,7 @@ const verify = async (req, res) => {
       approvedRewards: user.approvedRewards,
       pendingRewards: user.pendingRewards,
       currentBadge: user.currentBadge,
+      isSubAdmin: user.isSubAdmin,
     },
   })
 }
@@ -104,6 +107,7 @@ const getMe = async (req, res) => {
       rejectedSubmissions: user.rejectedSubmissions,
       currentBadge: user.currentBadge,
       isAdmin: user.isAdmin,
+      isSubAdmin: user.isSubAdmin,
       isActive: user.isActive,
       lastLoginAt: user.lastLoginAt,
     })

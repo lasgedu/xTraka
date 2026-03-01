@@ -99,7 +99,7 @@ export function SubmitPrompt() {
             }
 
             mediaRecorder.current = recorder
-            recorder.start()
+            recorder.start(200)
             setIsRecording(true)
             setRecordingTime(0)
             recordingTimeRef.current = 0
@@ -115,7 +115,12 @@ export function SubmitPrompt() {
 
     const stopRecording = useCallback(() => {
         if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
-            mediaRecorder.current.stop()
+            mediaRecorder.current.requestData() // Flush current buffer
+            setTimeout(() => {
+                if (mediaRecorder.current && mediaRecorder.current.state !== 'inactive') {
+                    mediaRecorder.current.stop()
+                }
+            }, 500) // 500ms delay to ensure capture
         }
         setIsRecording(false)
         if (timerRef.current) {
@@ -135,6 +140,7 @@ export function SubmitPrompt() {
         setAudioDuration(0)
         setRecordingTime(0)
         setIsPlaying(false)
+        audioChunks.current = []
     }, [audioUrl])
 
     const togglePlayback = useCallback(() => {

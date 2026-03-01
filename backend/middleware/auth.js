@@ -21,7 +21,7 @@ const authenticate = (req, res, next) => {
 
 const requireAdmin = async (req, res, next) => {
   try {
-    // Check if token has adminId (from Admin model) or isAdmin (from User model)
+    // Check if token has adminId (from Admin model)
     if (req.user?.adminId) {
       return next()
     }
@@ -41,10 +41,34 @@ const requireAdmin = async (req, res, next) => {
   }
 }
 
+const requireReviewer = async (req, res, next) => {
+  try {
+    // 1. Super Admin (Admin Model)
+    if (req.user?.adminId) return next()
+
+    // 2. User-based Admin or SubAdmin
+    const userId = req.user?.userId
+    if (!userId) return res.status(401).json({ message: 'Unauthorized' })
+
+    const user = await User.findById(userId)
+    if (!user) return res.status(404).json({ message: 'User not found' })
+
+    // Check if user is SuperAdmin OR SubAdmin
+    if (user.isAdmin || user.isSubAdmin) {
+      return next()
+    }
+
+    return res.status(403).json({ message: 'Reviewer access required' })
+  } catch (error) {
+    console.error('Reviewer Auth Error:', error)
+    return res.status(500).json({ message: 'Server error' })
+  }
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 20 * 1024 * 1024 },
 })
 
-module.exports = { authenticate, requireAdmin, upload }
+module.exports = { authenticate, requireAdmin, requireReviewer, upload }
 

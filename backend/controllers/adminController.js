@@ -2,10 +2,12 @@ const AdminReviewQueue = require('../models/AdminReviewQueue')
 const Submission = require('../models/Submission')
 const Task = require('../models/Task')
 const User = require('../models/User')
+const Withdrawal = require('../models/Withdrawal')
 const { calculateTrustScore, getBadgeForTrust } = require('../utils/helpers')
 const { logEvent } = require('../utils/auditLogger')
 const { Readable } = require('stream')
 const { getGridFSBucket } = require('../config/database')
+const { savePrivateKey, getPaymentStatus, getWalletBalances } = require('../utils/paymentService')
 
 const getReviewQueue = async (req, res, next) => {
   try {
@@ -136,10 +138,7 @@ const rejectSubmission = async (req, res, next) => {
 
 const createTask = async (req, res, next) => {
   try {
-    console.log('=== CREATE TASK REQUEST ===')
-    console.log('Body:', req.body)
-    console.log('File:', req.file ? { name: req.file.originalname, size: req.file.size, mimetype: req.file.mimetype } : 'No file')
-    console.log('User:', req.user)
+
 
     const {
       language,
@@ -168,12 +167,12 @@ const createTask = async (req, res, next) => {
     let sourceAudioPath = ''
     if (req.file) {
       try {
-        console.log('Processing audio file upload...')
+
         const bucket = getGridFSBucket()
         if (!bucket) {
           throw new Error('GridFS bucket not initialized')
         }
-        
+
         const filename = `${Date.now()}-${req.file.originalname}`
         const uploadStream = bucket.openUploadStream(filename)
         const bufferStream = Readable.from(req.file.buffer)
@@ -185,7 +184,7 @@ const createTask = async (req, res, next) => {
               reject(err)
             })
             .on('finish', () => {
-              console.log('Audio file uploaded successfully:', filename)
+
               resolve()
             })
         })
@@ -197,13 +196,7 @@ const createTask = async (req, res, next) => {
       }
     }
 
-    console.log('Creating task with data:', {
-      language,
-      title,
-      type: type || 'text+audio',
-      rewardAmount: rewardAmount || 0.2,
-      sourceAudioPath
-    })
+
 
     const task = await Task.create({
       language: language || 'igbo',
@@ -227,7 +220,7 @@ const createTask = async (req, res, next) => {
       createdBy: req.user?.userId || 'admin',
     })
 
-    console.log('Task created successfully:', task._id)
+
 
     await logEvent({
       eventType: 'task_created',
@@ -273,24 +266,106 @@ const getAllUsers = async (req, res, next) => {
   }
 }
 
+const toggleSubAdmin = async (req, res, next) => {
+  try {
+    const userId = req.params.id
+    const user = await User.findById(userId)
+
+    if (!user) return res.status(404).json({ message: 'User not found' })
+
+    // Prevent removing own admin status if you were to call this on yourself (though this is for subadmin)
+    if (user._id.toString() === req.user?.userId) {
+      // Optional safeguard
+    }
+
+    // If promoting to Sub-Admin (or updating existing), update languages
+
+
+    if (req.body.languages) {
+      if (Array.isArray(req.body.languages)) {
+        user.adminLanguages = req.body.languages
+      } else if (typeof req.body.languages === 'string') {
+        user.adminLanguages = req.body.languages.split(',').map(l => l.trim()).filter(Boolean)
+      }
+    }
+
+    // Toggle logic: If isSubAdmin is explicitly provided, use it. Otherwise toggle.
+    if (typeof req.body.isSubAdmin !== 'undefined') {
+      user.isSubAdmin = req.body.isSubAdmin === true || req.body.isSubAdmin === 'true'
+    } else {
+      user.isSubAdmin = !user.isSubAdmin
+    }
+
+    // If demoting (isSubAdmin becomes false), maybe clear languages? 
+    // User might want to keep them in case of re-promotion, so let's keep them.
+
+    await user.save()
+
+    await logEvent({
+      eventType: 'user_role_changed',
+      userHash: req.user?.walletHashIndex || 'admin',
+      details: { targetUserId: userId, isSubAdmin: user.isSubAdmin, languages: user.adminLanguages },
+      ipAddress: req.ip,
+    })
+
+    return res.json({
+      message: `User ${user.isSubAdmin ? 'promoted to' : 'demoted from'} Sub-Admin`,
+      isSubAdmin: user.isSubAdmin,
+      adminLanguages: user.adminLanguages
+    })
+  } catch (error) {
+    return next(error)
+  }
+}
+
 const getAllSubmissions = async (req, res, next) => {
   try {
     const page = parseInt(req.query.page) || 1
     const limit = parseInt(req.query.limit) || 20
     const skip = (page - 1) * limit
-    const { status, userHash } = req.query
-
+    let { status, userHash } = req.query
     const query = {}
+
+    // Check if requester is a SubAdmin (and NOT a SuperAdmin)
+    // accessing via wallet login (req.user.userId exists, req.user.adminId missing)
+    // We need to fetch the user to confirm exact role if not in token, 
+    // but middleware requireReviewer already let us in.
+
+    const isSuperAdmin = !!req.user?.adminId || (req.user?.userId && (await User.findById(req.user.userId))?.isAdmin)
+
+    // If NOT super admin, we must be a SubAdmin (or it's unauthorized, but middleware handles that)
+    if (!isSuperAdmin) {
+      status = 'pending'
+
+      // Get the user to check their allowed languages
+      const user = await User.findById(req.user.userId)
+      if (user && user.isSubAdmin) {
+        // If no languages assigned, they see NOTHING (implicit deny)
+        if (!user.adminLanguages || user.adminLanguages.length === 0) {
+          return res.json({
+            submissions: [],
+            pagination: { total: 0, page, pages: 0 }
+          })
+        }
+
+        // Find tasks that match these languages
+        const tasksInLanguages = await Task.find({ language: { $in: user.adminLanguages } }).distinct('_id')
+
+        // Add to query
+        query.taskId = { $in: tasksInLanguages }
+      }
+    }
+
     if (status) query.status = status
     if (userHash) query.userHash = userHash
+
+    const total = await Submission.countDocuments(query)
 
     const submissions = await Submission.find(query)
       .populate('taskId', 'title language')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
-
-    const total = await Submission.countDocuments(query)
 
     return res.json({
       submissions,
@@ -424,6 +499,66 @@ const deleteTask = async (req, res, next) => {
   }
 }
 
+// ─── Payment Config Endpoints ───────────────────────────────────────
+
+const savePaymentConfig = async (req, res, next) => {
+  try {
+    const { privateKey } = req.body
+    if (!privateKey) {
+      return res.status(400).json({ message: 'privateKey is required' })
+    }
+
+    const walletAddress = await savePrivateKey(privateKey)
+
+    await logEvent({
+      eventType: 'payment_config_updated',
+      userHash: req.user?.walletHashIndex || 'admin',
+      details: { walletAddress },
+      ipAddress: req.ip,
+    })
+
+    return res.json({
+      message: 'Payment configuration saved successfully',
+      walletAddress,
+    })
+  } catch (error) {
+    if (error.message === 'Invalid private key format') {
+      return res.status(400).json({ message: error.message })
+    }
+    return next(error)
+  }
+}
+
+const getPaymentConfig = async (req, res, next) => {
+  try {
+    const status = await getPaymentStatus()
+    return res.json(status)
+  } catch (error) {
+    return next(error)
+  }
+}
+
+const getAdminBalance = async (req, res, next) => {
+  try {
+    const balances = await getWalletBalances()
+    return res.json(balances)
+  } catch (error) {
+    return next(error)
+  }
+}
+
+const getPendingWithdrawals = async (req, res, next) => {
+  try {
+    const withdrawals = await Withdrawal.find({ status: { $in: ['pending', 'failed'] } })
+      .sort({ requestedAt: -1 })
+      .limit(100)
+
+    return res.json({ withdrawals })
+  } catch (error) {
+    return next(error)
+  }
+}
+
 module.exports = {
   getReviewQueue,
   approveSubmission,
@@ -434,4 +569,9 @@ module.exports = {
   getAllTasks,
   toggleTaskStatus,
   deleteTask,
+  toggleSubAdmin,
+  savePaymentConfig,
+  getPaymentConfig,
+  getAdminBalance,
+  getPendingWithdrawals,
 }

@@ -1,9 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 import '../pages/dashboard.css'
 
 export function Sidebar() {
     const location = useLocation()
     const currentPath = location.pathname
+    const { isAdmin, isSubAdmin } = useAuth()
+
 
     const isActive = (path: string) => {
         if (path === '/dashboard' && currentPath === '/dashboard') return true
@@ -45,10 +48,20 @@ export function Sidebar() {
                 >
                     <img src="/xtraka-images/airdrop%20icon.png" alt="" />
                 </Link>
+
+                {(isAdmin || isSubAdmin) && (
+                    <Link
+                        to="/admin"
+                        className={`dashboard-nav-btn ${isActive('/admin') ? 'dashboard-nav-active' : ''}`}
+                        aria-label="Admin"
+                    >
+                        <span style={{ fontSize: '1.5rem' }}>🛡️</span>
+                    </Link>
+                )}
             </nav>
             <div className="dashboard-sidebar-footer">
                 <img src="/xtraka-images/Xtraka%20black.png" alt="Traka" />
             </div>
-        </aside>
+        </aside >
     )
 }
