@@ -4,7 +4,7 @@
 
 **Live Site:** [https://xtraka.com](https://xtraka.com)
 
-**Video Demo:** [https://youtu.be/YUBEwyFZSYo](https://youtu.be/YUBEwyFZSYo)
+**Video Demo:** [https://youtu.be/I5cgenv5DCg](https://youtu.be/I5cgenv5DCg)
 
 ---
 
