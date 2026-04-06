@@ -4,10 +4,6 @@
 
 **Live Site:** [https://xtraka.com](https://xtraka.com)
 
-**Video Demo:** [https://youtu.be/I5cgenv5DCg](https://youtu.be/I5cgenv5DCg)
-
----
-
 ## Table of Contents
 
 - [Overview](#overview)
